@@ -42,8 +42,8 @@ content into your application; rather pick only the properties that you need.
 	spring.main....= # see class for all properties
 
 	# LOGGING
-	logging.path=/var/log
-	logging.file=myapp.log
+	logging.path=/var/log # directory where log files are written
+	logging.file=myapp.log # name of the log file
 	logging.config= # location of config file (default classpath:logback.xml for logback)
 	logging.level.*= # levels for loggers, e.g. "logging.level.org.springframework=DEBUG" (TRACE, DEBUG, INFO, WARN, ERROR, FATAL, OFF)
 
@@ -547,6 +547,7 @@ content into your application; rather pick only the properties that you need.
 	endpoints.metrics.id=metrics
 	endpoints.metrics.sensitive=true
 	endpoints.metrics.enabled=true
+	endpoints.metrics.filter.enabled=true # Enable the metrics servlet filter.
 	endpoints.shutdown.id=shutdown
 	endpoints.shutdown.sensitive=true
 	endpoints.shutdown.enabled=false

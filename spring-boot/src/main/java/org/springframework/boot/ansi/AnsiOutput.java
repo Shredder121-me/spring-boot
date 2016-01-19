@@ -30,6 +30,8 @@ public abstract class AnsiOutput {
 
 	private static Enabled enabled = Enabled.DETECT;
 
+	private static Boolean ansiCapable;
+
 	private static final String OPERATING_SYSTEM_NAME = System.getProperty("os.name")
 			.toLowerCase();
 
@@ -108,12 +110,15 @@ public abstract class AnsiOutput {
 
 	private static boolean isEnabled() {
 		if (enabled == Enabled.DETECT) {
-			return detectIfEnabled();
+			if (ansiCapable == null) {
+				ansiCapable = detectIfAnsiCapable();
+			}
+			return ansiCapable;
 		}
 		return enabled == Enabled.ALWAYS;
 	}
 
-	private static boolean detectIfEnabled() {
+	private static boolean detectIfAnsiCapable() {
 		try {
 			if (System.console() == null) {
 				return false;
