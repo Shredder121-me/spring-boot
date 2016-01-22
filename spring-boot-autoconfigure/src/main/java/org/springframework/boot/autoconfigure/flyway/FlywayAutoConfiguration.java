@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,10 @@
  */
 
 package org.springframework.boot.autoconfigure.flyway;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.persistence.EntityManagerFactory;
@@ -38,12 +42,14 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesBindin
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.orm.jpa.AbstractEntityManagerFactoryBean;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 /**
  * {@link EnableAutoConfiguration Auto-configuration} for Flyway database migrations.
@@ -51,6 +57,8 @@ import org.springframework.util.Assert;
  * @author Dave Syer
  * @author Phillip Webb
  * @author Vedran Pavic
+ * @author Stephane Nicoll
+ * @author Jacques-Etienne Beaudet
  * @since 1.1.0
  */
 @Configuration
@@ -63,8 +71,8 @@ public class FlywayAutoConfiguration {
 
 	@Bean
 	@ConfigurationPropertiesBinding
-	public StringToMigrationVersionConverter stringToMigrationVersionConverter() {
-		return new StringToMigrationVersionConverter();
+	public StringOrNumberToMigrationVersionConverter stringOrNumberMigrationVersionConverter() {
+		return new StringOrNumberToMigrationVersionConverter();
 	}
 
 	@Configuration
@@ -125,6 +133,7 @@ public class FlywayAutoConfiguration {
 			else {
 				flyway.setDataSource(this.dataSource);
 			}
+			flyway.setLocations(this.properties.getLocations().toArray(new String[0]));
 			return flyway;
 		}
 
@@ -169,14 +178,30 @@ public class FlywayAutoConfiguration {
 	}
 
 	/**
-	 * Convert a String to a {@link MigrationVersion}.
+	 * Convert a String or Number to a {@link MigrationVersion}.
 	 */
-	private static class StringToMigrationVersionConverter
-			implements Converter<String, MigrationVersion> {
+	private static class StringOrNumberToMigrationVersionConverter
+			implements GenericConverter {
+
+		private static final Set<ConvertiblePair> CONVERTIBLE_TYPES;
+
+		static {
+			Set<ConvertiblePair> types = new HashSet<ConvertiblePair>(2);
+			types.add(new ConvertiblePair(String.class, MigrationVersion.class));
+			types.add(new ConvertiblePair(Number.class, MigrationVersion.class));
+			CONVERTIBLE_TYPES = Collections.unmodifiableSet(types);
+		}
 
 		@Override
-		public MigrationVersion convert(String source) {
-			return MigrationVersion.fromVersion(source);
+		public Set<ConvertiblePair> getConvertibleTypes() {
+			return CONVERTIBLE_TYPES;
+		}
+
+		@Override
+		public Object convert(Object source, TypeDescriptor sourceType,
+				TypeDescriptor targetType) {
+			String value = ObjectUtils.nullSafeToString(source);
+			return MigrationVersion.fromVersion(value);
 		}
 
 	}

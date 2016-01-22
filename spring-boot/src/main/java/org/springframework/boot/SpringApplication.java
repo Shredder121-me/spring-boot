@@ -881,6 +881,9 @@ public class SpringApplication {
 
 	private int getExitCodeFromMappedException(ConfigurableApplicationContext context,
 			Throwable exception) {
+		if (context == null) {
+			return 0;
+		}
 		ExitCodeGenerators generators = new ExitCodeGenerators();
 		Collection<ExitCodeExceptionMapper> beans = context
 				.getBeansOfType(ExitCodeExceptionMapper.class).values();
@@ -909,6 +912,14 @@ public class SpringApplication {
 		return ("main".equals(currentThread.getName())
 				|| "restartedMain".equals(currentThread.getName()))
 				&& "main".equals(currentThread.getThreadGroup().getName());
+	}
+
+	/**
+	 * Returns the main application class that has been deduced or explicitly configured.
+	 * @return the main application class or {@code null}
+	 */
+	public Class<?> getMainApplicationClass() {
+		return this.mainApplicationClass;
 	}
 
 	/**
