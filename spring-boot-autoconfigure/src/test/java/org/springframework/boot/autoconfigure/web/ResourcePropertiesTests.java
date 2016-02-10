@@ -18,41 +18,39 @@ package org.springframework.boot.autoconfigure.web;
 
 import org.junit.Test;
 
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link ResourceProperties}.
  *
  * @author Stephane Nicoll
  */
-public class ResourcePropertiesTest {
+public class ResourcePropertiesTests {
 
 	private final ResourceProperties properties = new ResourceProperties();
 
 	@Test
 	public void resourceChainNoCustomization() {
 		System.out.println(this.properties.getChain().getEnabled());
-		assertThat(this.properties.getChain().getEnabled(), nullValue());
+		assertThat(this.properties.getChain().getEnabled()).isNull();
 	}
 
 	@Test
 	public void resourceChainStrategyEnabled() {
 		this.properties.getChain().getStrategy().getFixed().setEnabled(true);
-		assertThat(this.properties.getChain().getEnabled(), equalTo(true));
+		assertThat(this.properties.getChain().getEnabled()).isTrue();
 	}
 
 	@Test
 	public void resourceChainEnabled() {
 		this.properties.getChain().setEnabled(true);
-		assertThat(this.properties.getChain().getEnabled(), equalTo(true));
+		assertThat(this.properties.getChain().getEnabled()).isTrue();
 	}
 
 	@Test
 	public void resourceChainDisabled() {
 		this.properties.getChain().setEnabled(false);
-		assertThat(this.properties.getChain().getEnabled(), equalTo(false));
+		assertThat(this.properties.getChain().getEnabled()).isFalse();
 	}
 
 }
