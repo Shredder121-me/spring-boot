@@ -1,0 +1,20 @@
+# Spring Boot on Appveyor
+
+services:
+  - mongodb
+ #- redis will be setup manually
+
+install:
+  # setup redis
+  - nuget install redis-64 -excludeversion
+  - redis-64\tools\redis-server.exe --service-install
+  - redis-64\tools\redis-server.exe --service-start
+
+
+build_script:
+  - mvnw.cmd install -q -U -DskipTests=true -Dmaven.test.redirectTestOutputToFile=true || true
+  - mvnw.cmd install -q -U -DskipTests=true -Dmaven.test.redirectTestOutputToFile=true
+
+test_script:
+  - mvn.cmd install -q -nsu -Dmaven.test.redirectTestOutputToFile=true -P '!integration'
+
