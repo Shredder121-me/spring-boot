@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,7 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link CloudAutoConfiguration}.
@@ -50,7 +49,7 @@ public class CloudAutoConfigurationTests {
 		classNames.add(JpaRepositoriesAutoConfiguration.class.getName());
 		classNames.add(CloudAutoConfiguration.class.getName());
 		List<String> ordered = sorter.getInPriorityOrder(classNames);
-		assertThat(ordered.get(0), equalTo(CloudAutoConfiguration.class.getName()));
+		assertThat(ordered.get(0)).isEqualTo(CloudAutoConfiguration.class.getName());
 	}
 
 }

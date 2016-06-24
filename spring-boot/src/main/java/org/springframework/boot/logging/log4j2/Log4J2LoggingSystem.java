@@ -152,14 +152,12 @@ public class Log4J2LoggingSystem extends Slf4JLoggingSystem {
 	@Override
 	protected void loadConfiguration(LoggingInitializationContext initializationContext,
 			String location, LogFile logFile) {
+		super.loadConfiguration(initializationContext, location, logFile);
 		loadConfiguration(location, logFile);
 	}
 
 	protected void loadConfiguration(String location, LogFile logFile) {
 		Assert.notNull(location, "Location must not be null");
-		if (logFile != null) {
-			logFile.applyToSystemProperties();
-		}
 		try {
 			LoggerContext ctx = getLoggerContext();
 			URL url = ResourceUtils.getURL(location);
