@@ -18,12 +18,17 @@ package org.springframework.boot.test.autoconfigure.properties;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.util.ObjectUtils;
@@ -35,6 +40,7 @@ import org.springframework.util.StringUtils;
  * {@link PropertyMapping @PropertyMapping}.
  *
  * @author Phillip Webb
+ * @author Andy Wilkinson
  * @since 1.4.0
  */
 public class AnnotationsPropertySource extends EnumerablePropertySource<Class<?>> {
@@ -54,24 +60,49 @@ public class AnnotationsPropertySource extends EnumerablePropertySource<Class<?>
 
 	private Map<String, Object> getProperties(Class<?> source) {
 		Map<String, Object> properties = new LinkedHashMap<String, Object>();
-		collectProperties(source, properties);
+		collectProperties(source, source, properties, new HashSet<Class<?>>());
 		return Collections.unmodifiableMap(properties);
 	}
 
-	private void collectProperties(Class<?> source, Map<String, Object> properties) {
-		if (source != null) {
-			for (Annotation annotation : source.getDeclaredAnnotations()) {
+	private void collectProperties(Class<?> root, Class<?> source,
+			Map<String, Object> properties, Set<Class<?>> seen) {
+		if (source != null && seen.add(source)) {
+			for (Annotation annotation : getMergedAnnotations(root, source)) {
 				if (!AnnotationUtils.isInJavaLangAnnotationPackage(annotation)) {
-					PropertyMapping typeMapping = AnnotationUtils.getAnnotation(
-							annotation.annotationType(), PropertyMapping.class);
+					PropertyMapping typeMapping = annotation.annotationType()
+							.getAnnotation(PropertyMapping.class);
 					for (Method attribute : annotation.annotationType()
 							.getDeclaredMethods()) {
 						collectProperties(annotation, attribute, typeMapping, properties);
 					}
+					collectProperties(root, annotation.annotationType(), properties,
+							seen);
 				}
 			}
-			collectProperties(source.getSuperclass(), properties);
+			collectProperties(root, source.getSuperclass(), properties, seen);
 		}
+	}
+
+	private List<Annotation> getMergedAnnotations(Class<?> root, Class<?> source) {
+		List<Annotation> mergedAnnotations = new ArrayList<Annotation>();
+		for (Annotation annotation : AnnotationUtils.getAnnotations(source)) {
+			if (!AnnotationUtils.isInJavaLangAnnotationPackage(annotation)) {
+				mergedAnnotations
+						.add(findMergedAnnotation(root, annotation.annotationType()));
+			}
+		}
+		return mergedAnnotations;
+	}
+
+	private Annotation findMergedAnnotation(Class<?> source,
+			Class<? extends Annotation> annotationType) {
+		if (source == null) {
+			return null;
+		}
+		Annotation mergedAnnotation = AnnotatedElementUtils.getMergedAnnotation(source,
+				annotationType);
+		return mergedAnnotation != null ? mergedAnnotation
+				: findMergedAnnotation(source.getSuperclass(), annotationType);
 	}
 
 	private void collectProperties(Annotation annotation, Method attribute,
@@ -116,7 +147,6 @@ public class AnnotationsPropertySource extends EnumerablePropertySource<Class<?>
 	}
 
 	private String dotAppend(String prefix, String postfix) {
-		prefix = (prefix == null ? "" : prefix);
 		if (StringUtils.hasText(prefix)) {
 			return (prefix.endsWith(".") ? prefix + postfix : prefix + "." + postfix);
 		}

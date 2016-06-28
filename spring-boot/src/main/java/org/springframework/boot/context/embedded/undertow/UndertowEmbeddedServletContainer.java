@@ -92,12 +92,12 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param port the port to listen on (not used)
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
 	 * @deprecated as of 1.4 in favor of
-	 * {@link #UndertowEmbeddedServletContainer(Builder, DeploymentManager, String, boolean, Compression)}
+	 * {@link #UndertowEmbeddedServletContainer(Undertow.Builder, DeploymentManager, String, boolean, Compression)}
 	 */
 	@Deprecated
 	public UndertowEmbeddedServletContainer(Builder builder, DeploymentManager manager,
@@ -109,13 +109,13 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param port the port to listen on (not used)
 	 * @param useForwardHeaders if x-forward headers should be used
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
 	 * @deprecated as of 1.4 in favor of
-	 * {@link #UndertowEmbeddedServletContainer(Builder, DeploymentManager, String, boolean, boolean, Compression)}
+	 * {@link #UndertowEmbeddedServletContainer(Undertow.Builder, DeploymentManager, String, boolean, boolean, Compression)}
 	 */
 	@Deprecated
 	public UndertowEmbeddedServletContainer(Builder builder, DeploymentManager manager,
@@ -128,14 +128,14 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param port the port to listen on (not used)
 	 * @param useForwardHeaders if x-forward headers should be used
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
-	 * @param serverHeader string to be used in http header
+	 * @param serverHeader string to be used in HTTP header
 	 * @deprecated as of 1.4 in favor of
-	 * {@link #UndertowEmbeddedServletContainer(Builder, DeploymentManager, String, boolean, boolean, Compression, String)}
+	 * {@link #UndertowEmbeddedServletContainer(Undertow.Builder, DeploymentManager, String, boolean, boolean, Compression, String)}
 	 */
 	@Deprecated
 	public UndertowEmbeddedServletContainer(Builder builder, DeploymentManager manager,
@@ -149,7 +149,7 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
 	 */
@@ -162,7 +162,7 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param useForwardHeaders if x-forward headers should be used
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
@@ -178,11 +178,11 @@ public class UndertowEmbeddedServletContainer implements EmbeddedServletContaine
 	 * Create a new {@link UndertowEmbeddedServletContainer} instance.
 	 * @param builder the builder
 	 * @param manager the deployment manager
-	 * @param contextPath root the context path
+	 * @param contextPath the root context path
 	 * @param useForwardHeaders if x-forward headers should be used
 	 * @param autoStart if the server should be started
 	 * @param compression compression configuration
-	 * @param serverHeader string to be used in http header
+	 * @param serverHeader string to be used in HTTP header
 	 */
 	public UndertowEmbeddedServletContainer(Builder builder, DeploymentManager manager,
 			String contextPath, boolean useForwardHeaders, boolean autoStart,

@@ -42,9 +42,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD })
-@ImportAutoConfiguration({ MockMvcAutoConfiguration.class,
-		MockMvcWebClientAutoConfiguration.class,
-		MockMvcWebDriverAutoConfiguration.class })
+@ImportAutoConfiguration
 @PropertyMapping("spring.test.mockmvc")
 public @interface AutoConfigureMockMvc {
 
@@ -77,5 +75,12 @@ public @interface AutoConfigureMockMvc {
 	 */
 	@PropertyMapping("webdriver.enabled")
 	boolean webDriverEnabled() default true;
+
+	/**
+	 * If Spring Security's {@link MockMvc} support should be auto-configured when it is
+	 * on the classpath. Defaults to {@code true}.
+	 * @return if Spring Security's MockMvc support is auto-configured
+	 */
+	boolean secure() default true;
 
 }

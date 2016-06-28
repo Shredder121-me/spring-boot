@@ -19,7 +19,7 @@ unless you enable Spring MVC as well.>>
 == Enabling production-ready features
 The {github-code}/spring-boot-actuator[`spring-boot-actuator`] module provides all of
 Spring Boot's production-ready features. The simplest way to enable the features is to add
-a dependency to the `spring-boot-starter-actuator` '`Starter POM`'.
+a dependency to the `spring-boot-starter-actuator` '`Starter`'.
 
 .Definition of Actuator
 ****
@@ -28,7 +28,7 @@ controlling something. Actuators can generate a large amount of motion from a sm
 change.
 ****
 
-To add the actuator to a Maven based project, add the following '`starter`'
+To add the actuator to a Maven based project, add the following '`Starter`'
 dependency:
 
 [source,xml,indent=0]
@@ -236,13 +236,13 @@ HTTP (if there is an server available). An HTTP endpoints can be customized furt
 creating a bean of type `MvcEndpoint`. Your `MvcEndpoint` is not a `@Controller` but it
 can use `@RequestMapping` (and `@Managed*`) to expose resources.
 
-TIP: If you are doing this as a library feature consider adding a configuration class to
-`/META-INF/spring.factories` under the key
-`org.springframework.boot.actuate.autoconfigure.EndpointWebMvcConfiguration`. If you do
-that then the endpoint will move to a child context with all the other MVC endpoints if
-your users ask for a separate management port or address. A configuration declared this
-way can be a `WebConfigurerAdapter` if it wants to add static resources (for instance) to
-the management endpoints.
+TIP: If you are doing this as a library feature consider adding a configuration class
+annotated with `@ManagementContextConfiguration` to `/META-INF/spring.factories` under the
+key `org.springframework.boot.actuate.autoconfigure.ManagementContextConfiguration`. If
+you do that then the endpoint will move to a child context with all the other MVC
+endpoints if your users ask for a separate management port or address. A configuration
+declared this way can be a `WebConfigurerAdapter` if it wants to add static resources (for
+instance) to the management endpoints.
 
 
 
@@ -393,7 +393,7 @@ The following `InfoContributors` are auto-configured by Spring Boot when appropr
 |Expose git information if a `git.properties` file is available.
 
 |{sc-spring-boot-actuator}/info/BuildInfoContributor.{sc-ext}[`BuildInfoContributor`]
-|Expose build information if a `META-INF/boot/build.properties` file is available.
+|Expose build information if a `META-INF/build-info.properties` file is available.
 |===
 
 TIP: It is possible to disable them all using the `management.info.defaults.enabled`
@@ -453,18 +453,11 @@ If you want to display the full git information (i.e. the full content of
 [[production-ready-application-info-build]]
 ==== Build information
 The `info` endpoint can also publish information about your build if a `BuildProperties`
-bean is available. This happens if a `META-INF/boot/build.properties` file is available
+bean is available. This happens if a `META-INF/build-info.properties` file is available
 in the classpath.
 
 TIP: The Maven and Gradle plugins can both generate that file, see
 <<howto.adoc#howto-build-info,Generate build information>> for more details.
-
-If additional properties are present they are not exposed unless configured explicitly:
-
-[source,properties,indent=0]
-----
-	management.info.build.mode=full
-----
 
 
 [[production-ready-application-info-custom]]
@@ -527,14 +520,14 @@ TIP: Generated passwords are logged as the application starts. Search for '`Usin
 security password`'.
 
 You can use Spring properties to change the username and password and to change the
-security role required to access the endpoints. For example, you might set the following
+security role(s) required to access the endpoints. For example, you might set the following
 in your `application.properties`:
 
 [source,properties,indent=0]
 ----
 	security.user.name=admin
 	security.user.password=secret
-	management.security.role=SUPERUSER
+	management.security.roles=SUPERUSER
 ----
 
 TIP: If you don't use Spring Security and your HTTP endpoints are exposed publicly,
@@ -599,6 +592,39 @@ management security like this:
 
 (If you don't have Spring Security on the classpath then there is no need to explicitly
 disable the management security in this way, and it might even break the application.)
+
+
+
+[[production-ready-management-specific-ssl]]
+=== Configuring management-specific SSL
+When configured to use a custom port, the management server can also be configured with
+its own SSL using the various `management.ssl.*` properties. For example, this allows a
+management server to be available via HTTP while the main application uses HTTPS:
+
+[source,properties,indent=0]
+----
+	server.port=8443
+	server.ssl.enabled=true
+	server.ssl.key-store=classpath:store.jks
+	server.ssl.key-password=secret
+	management.port=8080
+	management.ssl.enable=false
+----
+
+Alternatively, both the main server and the management server can use SSL but with
+different key stores:
+
+[source,properties,indent=0]
+----
+	server.port=8443
+	server.ssl.enabled=true
+	server.ssl.key-store=classpath:main.jks
+	server.ssl.key-password=secret
+	management.port=8080
+	management.ssl.enable=true
+	management.ssl.key-store=classpath:management.jks
+	management.ssl.key-password=secret
+----
 
 
 
@@ -817,9 +843,10 @@ and `endpoint` commands.
 
 [[production-ready-remote-shell-credentials]]
 ==== Remote shell credentials
-You can use the `shell.auth.simple.user.name` and `shell.auth.simple.user.password` properties
-to configure custom connection credentials. It is also possible to use a
-'`Spring Security`' `AuthenticationManager` to handle login duties. See the
+You can use the `management.shell.auth.simple.user.name` and
+`management.shell.auth.simple.user.password` properties to configure custom connection
+credentials. It is also possible to use a '`Spring Security`' `AuthenticationManager` to
+handle login duties. See the
 {dc-spring-boot-actuator}/autoconfigure/CrshAutoConfiguration.{dc-ext}[`CrshAutoConfiguration`]
 and {dc-spring-boot-actuator}/autoconfigure/ShellProperties.{dc-ext}[`ShellProperties`]
 Javadoc for full details.
@@ -1236,7 +1263,7 @@ private String prefix = "metrics";
 @Bean
 @ExportMetricWriter
 MetricWriter metricWriter() {
-	return new StatsdMetricWriter(prefix, "localhost", "8125");
+	return new StatsdMetricWriter(prefix, "localhost", 8125);
 }
 ----
 

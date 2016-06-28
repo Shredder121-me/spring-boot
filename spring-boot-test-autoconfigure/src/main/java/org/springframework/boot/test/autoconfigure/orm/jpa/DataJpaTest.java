@@ -25,6 +25,7 @@ import java.lang.annotation.Target;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.core.AutoConfigureCache;
 import org.springframework.boot.test.autoconfigure.filter.TypeExcludeFilters;
 import org.springframework.boot.test.autoconfigure.properties.PropertyMapping;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,12 +48,15 @@ import org.springframework.transaction.annotation.Transactional;
  * override these settings.
  * <p>
  * If you are looking to load your full application configuration, but use an embedded
- * database, you should consider {@link SpringBootTest @SpringApplicationTest}
- * combined with {@link AutoConfigureTestDatabase @AutoConfigureTestDatabase} rather than
- * this annotation.
+ * database, you should consider {@link SpringBootTest @SpringBootTest} combined with
+ * {@link AutoConfigureTestDatabase @AutoConfigureTestDatabase} rather than this
+ * annotation.
  *
  * @author Phillip Webb
+ * @see AutoConfigureDataJpa
  * @see AutoConfigureTestDatabase
+ * @see AutoConfigureTestEntityManager
+ * @see AutoConfigureCache
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -62,7 +66,8 @@ import org.springframework.transaction.annotation.Transactional;
 @OverrideAutoConfiguration(enabled = false)
 @TypeExcludeFilters(DataJpaTypeExcludeFilter.class)
 @Transactional
-@ImportDataJpaAutoConfiguration
+@AutoConfigureCache
+@AutoConfigureDataJpa
 @AutoConfigureTestDatabase
 @AutoConfigureTestEntityManager
 public @interface DataJpaTest {

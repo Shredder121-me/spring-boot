@@ -23,7 +23,7 @@ import java.util.zip.GZIPInputStream;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import org.springframework.boot.context.web.LocalServerPort;
+import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -35,7 +35,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,7 +66,7 @@ public class SampleJettyApplicationTests {
 		requestHeaders.set("Accept-Encoding", "gzip");
 		HttpEntity<?> requestEntity = new HttpEntity<Object>(requestHeaders);
 
-		RestTemplate restTemplate = new TestRestTemplate();
+		TestRestTemplate restTemplate = new TestRestTemplate();
 
 		ResponseEntity<byte[]> entity = restTemplate.exchange(
 				"http://localhost:" + this.port, HttpMethod.GET, requestEntity,

@@ -22,7 +22,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.boot.actuate.autoconfigure.MinimalActuatorHypermediaApplication;
-import org.springframework.boot.context.web.LocalServerPort;
+import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -77,6 +77,17 @@ public class HalBrowserMvcEndpointServerContextPathIntegrationTests {
 				new HttpEntity<Void>(null, headers), String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(entity.getBody()).contains("<title");
+	}
+
+	@Test
+	public void actuatorBrowserEntryPoint() throws Exception {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setAccept(Arrays.asList(MediaType.TEXT_HTML));
+		ResponseEntity<String> entity = new TestRestTemplate().exchange(
+				"http://localhost:" + this.port + "/spring/actuator/browser.html",
+				HttpMethod.GET, new HttpEntity<Void>(null, headers), String.class);
+		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(entity.getBody()).contains("entryPoint: '/spring/actuator'");
 	}
 
 	@Test

@@ -16,14 +16,14 @@
 
 package org.springframework.boot.autoconfigure;
 
+import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -41,8 +41,8 @@ import static org.mockito.Mockito.verifyZeroInteractions;
  * Tests for {@link ImportAutoConfigurationImportSelector}.
  *
  * @author Phillip Webb
+ * @author Andy Wilkinson
  */
-@RunWith(MockitoJUnitRunner.class)
 public class ImportAutoConfigurationImportSelectorTests {
 
 	private final ImportAutoConfigurationImportSelector importSelector = new ImportAutoConfigurationImportSelector();
@@ -53,7 +53,8 @@ public class ImportAutoConfigurationImportSelectorTests {
 	private Environment environment;
 
 	@Before
-	public void configureImportSelector() {
+	public void setup() {
+		MockitoAnnotations.initMocks(this);
 		this.importSelector.setBeanFactory(this.beanFactory);
 		this.importSelector.setEnvironment(this.environment);
 		this.importSelector.setResourceLoader(new DefaultResourceLoader());
@@ -87,6 +88,15 @@ public class ImportAutoConfigurationImportSelectorTests {
 				ThymeleafAutoConfiguration.class.getName());
 	}
 
+	@Test
+	public void selfAnnotatingAnnotationDoesNotCauseStackOverflow() throws IOException {
+		AnnotationMetadata annotationMetadata = new SimpleMetadataReaderFactory()
+				.getMetadataReader(ImportWithSelfAnnotatingAnnotation.class.getName())
+				.getAnnotationMetadata();
+		String[] imports = this.importSelector.selectImports(annotationMetadata);
+		assertThat(imports).containsOnly(ThymeleafAutoConfiguration.class.getName());
+	}
+
 	@ImportAutoConfiguration(FreeMarkerAutoConfiguration.class)
 	static class ImportFreemarker {
 
@@ -95,6 +105,11 @@ public class ImportAutoConfigurationImportSelectorTests {
 	@ImportOne
 	@ImportTwo
 	static class MultipleImports {
+
+	}
+
+	@SelfAnnotating
+	static class ImportWithSelfAnnotatingAnnotation {
 
 	}
 
@@ -107,6 +122,13 @@ public class ImportAutoConfigurationImportSelectorTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
 	static @interface ImportTwo {
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
+	@SelfAnnotating
+	static @interface SelfAnnotating {
 
 	}
 

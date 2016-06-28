@@ -48,12 +48,13 @@ class MockDefinition extends Definition {
 	private final boolean serializable;
 
 	MockDefinition(Class<?> classToMock) {
-		this(null, classToMock, null, null, false, null);
+		this(null, classToMock, null, null, false, null, true);
 	}
 
 	MockDefinition(String name, Class<?> classToMock, Class<?>[] extraInterfaces,
-			Answers answer, boolean serializable, MockReset reset) {
-		super(name, reset);
+			Answers answer, boolean serializable, MockReset reset,
+			boolean proxyTargetAware) {
+		super(name, reset, proxyTargetAware);
 		Assert.notNull(classToMock, "ClassToMock must not be null");
 		this.classToMock = classToMock;
 		this.extraInterfaces = asClassSet(extraInterfaces);
@@ -70,7 +71,7 @@ class MockDefinition extends Definition {
 	}
 
 	/**
-	 * Return the classes that should be mocked.
+	 * Return the class that should be mocked.
 	 * @return the class to mock; never {@code null}
 	 */
 	public Class<?> getClassToMock() {
@@ -79,7 +80,7 @@ class MockDefinition extends Definition {
 
 	/**
 	 * Return the extra interfaces.
-	 * @return the extra interfaces or an empty array
+	 * @return the extra interfaces or an empty set
 	 */
 	public Set<Class<?>> getExtraInterfaces() {
 		return this.extraInterfaces;
@@ -87,7 +88,7 @@ class MockDefinition extends Definition {
 
 	/**
 	 * Return the answers mode.
-	 * @return the answer the answers mode; never {@code null}
+	 * @return the answers mode; never {@code null}
 	 */
 	public Answers getAnswer() {
 		return this.answer;

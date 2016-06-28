@@ -17,6 +17,7 @@
 package org.springframework.boot.actuate.hypermedia;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,6 +29,7 @@ import java.util.Map;
 
 import groovy.text.Template;
 import groovy.text.TemplateEngine;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -47,6 +49,7 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultHandler;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
 
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
@@ -60,10 +63,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"endpoints.health.sensitive=true", "endpoints.actuator.enabled=false" })
 @DirtiesContext
 @AutoConfigureRestDocs(EndpointDocumentation.RESTDOCS_OUTPUT_DIR)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(alwaysPrint = false)
 public class EndpointDocumentation {
 
 	static final String RESTDOCS_OUTPUT_DIR = "target/generated-snippets";
+
+	static final File LOG_FILE = new File("target/logs/spring.log");
 
 	@Autowired
 	private MvcEndpoints mvcEndpoints;
@@ -74,6 +79,11 @@ public class EndpointDocumentation {
 	@Autowired
 	private MockMvc mockMvc;
 
+	@BeforeClass
+	public static void clearLog() {
+		LOG_FILE.delete();
+	}
+
 	@Test
 	public void logfile() throws Exception {
 		this.mockMvc.perform(get("/logfile").accept(MediaType.TEXT_PLAIN))
@@ -82,6 +92,8 @@ public class EndpointDocumentation {
 
 	@Test
 	public void partialLogfile() throws Exception {
+		FileCopyUtils.copy(getClass().getResourceAsStream("log.txt"),
+				new FileOutputStream(LOG_FILE));
 		this.mockMvc
 				.perform(get("/logfile").accept(MediaType.TEXT_PLAIN)
 						.header(HttpHeaders.RANGE, "bytes=0-1024"))

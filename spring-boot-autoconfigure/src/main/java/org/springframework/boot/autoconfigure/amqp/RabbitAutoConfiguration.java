@@ -109,10 +109,16 @@ public class RabbitAutoConfiguration {
 			RabbitProperties.Ssl ssl = config.getSsl();
 			if (ssl.isEnabled()) {
 				factory.setUseSSL(true);
+				if (ssl.getAlgorithm() != null) {
+					factory.setSslAlgorithm(ssl.getAlgorithm());
+				}
 				factory.setKeyStore(ssl.getKeyStore());
 				factory.setKeyStorePassphrase(ssl.getKeyStorePassword());
 				factory.setTrustStore(ssl.getTrustStore());
 				factory.setTrustStorePassphrase(ssl.getTrustStorePassword());
+			}
+			if (config.getConnectionTimeout() != null) {
+				factory.setConnectionTimeout(config.getConnectionTimeout());
 			}
 			factory.afterPropertiesSet();
 			CachingConnectionFactory connectionFactory = new CachingConnectionFactory(

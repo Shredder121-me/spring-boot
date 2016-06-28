@@ -23,12 +23,15 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import org.springframework.core.annotation.AliasFor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link AnnotationsPropertySource}.
  *
  * @author Phillip Webb
+ * @author Andy Wilkinson
  */
 public class AnnotationsPropertySourceTests {
 
@@ -131,6 +134,55 @@ public class AnnotationsPropertySourceTests {
 		AnnotationsPropertySource source = new AnnotationsPropertySource(
 				CamelCaseToKebabCase.class);
 		assertThat(source.getPropertyNames()).contains("camel-case-to-kebab-case");
+	}
+
+	@Test
+	public void propertiesFromMetaAnnotationsAreMapped() throws Exception {
+		AnnotationsPropertySource source = new AnnotationsPropertySource(
+				PropertiesFromSingleMetaAnnotation.class);
+		assertThat(source.getPropertyNames()).containsExactly("value");
+		assertThat(source.getProperty("value")).isEqualTo("foo");
+	}
+
+	@Test
+	public void propertiesFromMultipleMetaAnnotationsAreMappedUsingTheirOwnPropertyMapping()
+			throws Exception {
+		AnnotationsPropertySource source = new AnnotationsPropertySource(
+				PropertiesFromMultipleMetaAnnotations.class);
+		assertThat(source.getPropertyNames()).containsExactly("value", "test.value",
+				"test.example");
+		assertThat(source.getProperty("value")).isEqualTo("alpha");
+		assertThat(source.getProperty("test.value")).isEqualTo("bravo");
+		assertThat(source.getProperty("test.example")).isEqualTo("charlie");
+	}
+
+	@Test
+	public void propertyMappedAttributesCanBeAliased() {
+		AnnotationsPropertySource source = new AnnotationsPropertySource(
+				PropertyMappedAttributeWithAnAlias.class);
+		assertThat(source.getPropertyNames()).containsExactly("aliasing.value");
+		assertThat(source.getProperty("aliasing.value")).isEqualTo("baz");
+	}
+
+	@Test
+	public void selfAnnotatingAnnotationDoesNotCauseStackOverflow() {
+		new AnnotationsPropertySource(PropertyMappedWithSelfAnnotatingAnnotation.class);
+	}
+
+	@Test
+	public void typeLevelAnnotationOnSuperClass() {
+		AnnotationsPropertySource source = new AnnotationsPropertySource(
+				PropertyMappedAnnotationOnSuperClass.class);
+		assertThat(source.getPropertyNames()).containsExactly("value");
+		assertThat(source.getProperty("value")).isEqualTo("abc");
+	}
+
+	@Test
+	public void aliasedPropertyMappedAttributeOnSuperClass() {
+		AnnotationsPropertySource source = new AnnotationsPropertySource(
+				AliasedPropertyMappedAnnotationOnSuperClass.class);
+		assertThat(source.getPropertyNames()).containsExactly("aliasing.value");
+		assertThat(source.getProperty("aliasing.value")).isEqualTo("baz");
 	}
 
 	static class NoAnnotation {
@@ -259,6 +311,74 @@ public class AnnotationsPropertySourceTests {
 	static @interface CamelCaseToKebabCaseAnnotation {
 
 		String camelCaseToKebabCase() default "abc";
+
+	}
+
+	@PropertiesFromSingleMetaAnnotationAnnotation
+	static class PropertiesFromSingleMetaAnnotation {
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@TypeLevelAnnotation("foo")
+	static @interface PropertiesFromSingleMetaAnnotationAnnotation {
+
+	}
+
+	@PropertiesFromMultipleMetaAnnotationsAnnotation
+	static class PropertiesFromMultipleMetaAnnotations {
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@TypeLevelAnnotation("alpha")
+	@TypeLevelWithPrefixAnnotation("bravo")
+	@TypeAndAttributeLevelWithPrefixAnnotation("charlie")
+	static @interface PropertiesFromMultipleMetaAnnotationsAnnotation {
+
+	}
+
+	@AttributeWithAliasAnnotation("baz")
+	static class PropertyMappedAttributeWithAnAlias {
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@AliasedAttributeAnnotation
+	static @interface AttributeWithAliasAnnotation {
+
+		@AliasFor(annotation = AliasedAttributeAnnotation.class, attribute = "value")
+		String value() default "foo";
+
+		String someOtherAttribute() default "shouldNotBeMapped";
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@PropertyMapping("aliasing")
+	static @interface AliasedAttributeAnnotation {
+
+		String value() default "bar";
+
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@SelfAnnotating
+	static @interface SelfAnnotating {
+
+	}
+
+	@SelfAnnotating
+	static class PropertyMappedWithSelfAnnotatingAnnotation {
+
+	}
+
+	static class PropertyMappedAnnotationOnSuperClass extends TypeLevel {
+
+	}
+
+	static class AliasedPropertyMappedAnnotationOnSuperClass
+			extends PropertyMappedAttributeWithAnAlias {
 
 	}
 

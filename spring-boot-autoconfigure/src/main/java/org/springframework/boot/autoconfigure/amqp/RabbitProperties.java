@@ -89,6 +89,11 @@ public class RabbitProperties {
 	private boolean publisherReturns;
 
 	/**
+	 * Connection timeout, in milliseconds; zero for infinite.
+	 */
+	private Integer connectionTimeout;
+
+	/**
 	 * Cache configuration.
 	 */
 	private final Cache cache = new Cache();
@@ -222,6 +227,14 @@ public class RabbitProperties {
 		this.publisherReturns = publisherReturns;
 	}
 
+	public Integer getConnectionTimeout() {
+		return this.connectionTimeout;
+	}
+
+	public void setConnectionTimeout(Integer connectionTimeout) {
+		this.connectionTimeout = connectionTimeout;
+	}
+
 	public Cache getCache() {
 		return this.cache;
 	}
@@ -261,6 +274,12 @@ public class RabbitProperties {
 		 */
 		private String trustStorePassword;
 
+		/**
+		 * SSL algorithm to use (e.g. TLSv1.1). Default is set automatically by the rabbit
+		 * client library.
+		 */
+		private String algorithm;
+
 		public boolean isEnabled() {
 			return this.enabled;
 		}
@@ -299,6 +318,14 @@ public class RabbitProperties {
 
 		public void setTrustStorePassword(String trustStorePassword) {
 			this.trustStorePassword = trustStorePassword;
+		}
+
+		public String getAlgorithm() {
+			return this.algorithm;
+		}
+
+		public void setAlgorithm(String sslAlgorithm) {
+			this.algorithm = sslAlgorithm;
 		}
 
 	}

@@ -43,8 +43,8 @@ import org.mockito.InOrder;
 import org.springframework.boot.context.embedded.AbstractEmbeddedServletContainerFactory;
 import org.springframework.boot.context.embedded.AbstractEmbeddedServletContainerFactoryTests;
 import org.springframework.boot.context.embedded.Compression;
-import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.boot.context.embedded.Ssl;
+import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.http.HttpHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -136,6 +136,8 @@ public class JettyEmbeddedServletContainerFactoryTests
 				.getConnectionFactory(SslConnectionFactory.class);
 		assertThat(connectionFactory.getSslContextFactory().getIncludeCipherSuites())
 				.containsExactly("ALPHA", "BRAVO", "CHARLIE");
+		assertThat(connectionFactory.getSslContextFactory().getExcludeCipherSuites())
+				.isEmpty();
 	}
 
 	@Override

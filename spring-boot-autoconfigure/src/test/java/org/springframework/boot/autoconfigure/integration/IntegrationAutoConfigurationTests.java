@@ -61,12 +61,14 @@ public class IntegrationAutoConfigurationTests {
 	@Test
 	public void parentContext() {
 		this.context = new AnnotationConfigApplicationContext();
-		this.context.register(JmxAutoConfiguration.class, IntegrationAutoConfiguration.class);
+		this.context.register(JmxAutoConfiguration.class,
+				IntegrationAutoConfiguration.class);
 		this.context.refresh();
 		AnnotationConfigApplicationContext parent = this.context;
 		this.context = new AnnotationConfigApplicationContext();
 		this.context.setParent(parent);
-		this.context.register(JmxAutoConfiguration.class, IntegrationAutoConfiguration.class);
+		this.context.register(JmxAutoConfiguration.class,
+				IntegrationAutoConfiguration.class);
 		this.context.refresh();
 		assertThat(this.context.getBean(HeaderChannelRegistry.class)).isNotNull();
 		((ConfigurableApplicationContext) this.context.getParent()).close();
@@ -89,7 +91,7 @@ public class IntegrationAutoConfigurationTests {
 
 	@Test
 	public void customizeJmxDomain() {
-		load("spring.jmx.default-domain=org.foo");
+		load("SPRING_JMX_DEFAULT_DOMAIN=org.foo");
 		MBeanServer mBeanServer = this.context.getBean(MBeanServer.class);
 		assertDomains(mBeanServer, true, "org.foo");
 		assertDomains(mBeanServer, false, "org.springframework.integration",

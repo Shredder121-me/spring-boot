@@ -376,8 +376,6 @@ public class ConfigFileApplicationListenerTests {
 	@Test
 	public void loadPropertiesThenProfilePropertiesWithOverride() throws Exception {
 		this.environment.setActiveProfiles("other");
-		// TestPropertySourceUtils.addInlinedPropertiesToEnvironment(this.environment,
-		// "spring.profiles.active:other");
 		this.initializer.setSearchNames("enableprofile");
 		this.initializer.postProcessEnvironment(this.environment, this.application);
 		String property = this.environment.getProperty("other.property");
@@ -464,7 +462,7 @@ public class ConfigFileApplicationListenerTests {
 			assertThat(index)
 					.as("Loading profile '" + profile + "' not found in '" + log + "'")
 					.isNotEqualTo(-1);
-			log = log.substring(index + line.length(), log.length());
+			log = log.substring(index + line.length());
 		}
 	}
 
@@ -539,7 +537,7 @@ public class ConfigFileApplicationListenerTests {
 	}
 
 	@Test
-	public void yamlSetsMultiProfilesWithWithespace() throws Exception {
+	public void yamlSetsMultiProfilesWithWhitespace() throws Exception {
 		this.initializer.setSearchNames("testsetmultiprofileswhitespace");
 		this.initializer.postProcessEnvironment(this.environment, this.application);
 		assertThat(this.environment.getActiveProfiles()).containsExactly("dev",

@@ -39,6 +39,7 @@ import org.apache.catalina.valves.RemoteIpValve;
 import org.apache.coyote.AbstractProtocol;
 import org.apache.coyote.ProtocolHandler;
 import org.apache.coyote.http11.AbstractHttp11Protocol;
+import org.eclipse.jetty.server.AbstractConnector;
 import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -56,7 +57,6 @@ import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomi
 import org.springframework.boot.context.embedded.EmbeddedServletContainerFactory;
 import org.springframework.boot.context.embedded.InitParameterConfiguringServletContextInitializer;
 import org.springframework.boot.context.embedded.JspServlet;
-import org.springframework.boot.context.embedded.ServletContextInitializer;
 import org.springframework.boot.context.embedded.Ssl;
 import org.springframework.boot.context.embedded.jetty.JettyEmbeddedServletContainerFactory;
 import org.springframework.boot.context.embedded.jetty.JettyServerCustomizer;
@@ -68,6 +68,7 @@ import org.springframework.boot.context.embedded.undertow.UndertowEmbeddedServle
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
@@ -131,7 +132,7 @@ public class ServerProperties
 	private Boolean useForwardHeaders;
 
 	/**
-	 * Value to use for the server header (uses servlet container default if empty).
+	 * Value to use for the Server response header (no header is sent if empty).
 	 */
 	private String serverHeader;
 
@@ -144,6 +145,13 @@ public class ServerProperties
 	 * Maximum size in bytes of the HTTP post content.
 	 */
 	private int maxHttpPostSize = 0; // bytes
+
+	/**
+	 * Time in milliseconds that connectors will wait for another HTTP request before
+	 * closing the connection. When not set, the connector's container-specific default
+	 * will be used. Use a value of -1 to indicate no (i.e. infinite) timeout.
+	 */
+	private Integer connectionTimeout;
 
 	private Session session = new Session();
 
@@ -364,6 +372,14 @@ public class ServerProperties
 		}
 		CloudPlatform platform = CloudPlatform.getActive(this.environment);
 		return (platform == null ? false : platform.isUsingForwardHeaders());
+	}
+
+	public Integer getConnectionTimeout() {
+		return this.connectionTimeout;
+	}
+
+	public void setConnectionTimeout(Integer connectionTimeout) {
+		this.connectionTimeout = connectionTimeout;
 	}
 
 	public ErrorProperties getError() {
@@ -769,6 +785,21 @@ public class ServerProperties
 			if (getUriEncoding() != null) {
 				factory.setUriEncoding(getUriEncoding());
 			}
+			if (serverProperties.getConnectionTimeout() != null) {
+				customizeConnectionTimeout(factory,
+						serverProperties.getConnectionTimeout());
+			}
+		}
+
+		private void customizeConnectionTimeout(
+				TomcatEmbeddedServletContainerFactory factory, int connectionTimeout) {
+			for (Connector connector : factory.getAdditionalTomcatConnectors()) {
+				if (connector.getProtocolHandler() instanceof AbstractProtocol) {
+					AbstractProtocol<?> handler = (AbstractProtocol<?>) connector
+							.getProtocolHandler();
+					handler.setConnectionTimeout(connectionTimeout);
+				}
+			}
 		}
 
 		private void customizeBackgroundProcessorDelay(
@@ -978,7 +1009,7 @@ public class ServerProperties
 			this.selectors = selectors;
 		}
 
-		void customizeJetty(ServerProperties serverProperties,
+		void customizeJetty(final ServerProperties serverProperties,
 				JettyEmbeddedServletContainerFactory factory) {
 			factory.setUseForwardHeaders(serverProperties.getOrDeduceUseForwardHeaders());
 			if (this.acceptors != null) {
@@ -994,6 +1025,28 @@ public class ServerProperties
 			if (serverProperties.getMaxHttpPostSize() > 0) {
 				customizeMaxHttpPostSize(factory, serverProperties.getMaxHttpPostSize());
 			}
+
+			if (serverProperties.getConnectionTimeout() != null) {
+				customizeConnectionTimeout(factory,
+						serverProperties.getConnectionTimeout());
+			}
+		}
+
+		private void customizeConnectionTimeout(
+				JettyEmbeddedServletContainerFactory factory,
+				final int connectionTimeout) {
+			factory.addServerCustomizers(new JettyServerCustomizer() {
+				@Override
+				public void customize(Server server) {
+					for (org.eclipse.jetty.server.Connector connector : server
+							.getConnectors()) {
+						if (connector instanceof AbstractConnector) {
+							((AbstractConnector) connector)
+									.setIdleTimeout(connectionTimeout);
+						}
+					}
+				}
+			});
 		}
 
 		private void customizeMaxHttpHeaderSize(
@@ -1005,12 +1058,17 @@ public class ServerProperties
 				public void customize(Server server) {
 					for (org.eclipse.jetty.server.Connector connector : server
 							.getConnectors()) {
-						for (ConnectionFactory connectionFactory : connector
-								.getConnectionFactories()) {
-							if (connectionFactory instanceof HttpConfiguration.ConnectionFactory) {
-								customize(
-										(HttpConfiguration.ConnectionFactory) connectionFactory);
+						try {
+							for (ConnectionFactory connectionFactory : connector
+									.getConnectionFactories()) {
+								if (connectionFactory instanceof HttpConfiguration.ConnectionFactory) {
+									customize(
+											(HttpConfiguration.ConnectionFactory) connectionFactory);
+								}
 							}
+						}
+						catch (NoSuchMethodError ex) {
+							customizeOnJetty8(connector, maxHttpHeaderSize);
 						}
 					}
 
@@ -1020,6 +1078,20 @@ public class ServerProperties
 					HttpConfiguration configuration = factory.getHttpConfiguration();
 					configuration.setRequestHeaderSize(maxHttpHeaderSize);
 					configuration.setResponseHeaderSize(maxHttpHeaderSize);
+				}
+
+				private void customizeOnJetty8(
+						org.eclipse.jetty.server.Connector connector,
+						int maxHttpHeaderSize) {
+					try {
+						connector.getClass().getMethod("setRequestHeaderSize", int.class)
+								.invoke(connector, maxHttpHeaderSize);
+						connector.getClass().getMethod("setResponseHeaderSize", int.class)
+								.invoke(connector, maxHttpHeaderSize);
+					}
+					catch (Exception ex) {
+						throw new RuntimeException(ex);
+					}
 				}
 
 			});
@@ -1130,7 +1202,7 @@ public class ServerProperties
 			return this.accesslog;
 		}
 
-		void customizeUndertow(ServerProperties serverProperties,
+		void customizeUndertow(final ServerProperties serverProperties,
 				UndertowEmbeddedServletContainerFactory factory) {
 			if (this.bufferSize != null) {
 				factory.setBufferSize(this.bufferSize);
@@ -1164,6 +1236,23 @@ public class ServerProperties
 			if (serverProperties.getMaxHttpPostSize() > 0) {
 				customizeMaxHttpPostSize(factory, serverProperties.getMaxHttpPostSize());
 			}
+
+			if (serverProperties.getConnectionTimeout() != null) {
+				customizeConnectionTimeout(factory,
+						serverProperties.getConnectionTimeout());
+			}
+		}
+
+		private void customizeConnectionTimeout(
+				UndertowEmbeddedServletContainerFactory factory,
+				final int connectionTimeout) {
+			factory.addBuilderCustomizers(new UndertowBuilderCustomizer() {
+				@Override
+				public void customize(Builder builder) {
+					builder.setSocketOption(UndertowOptions.NO_REQUEST_TIMEOUT,
+							connectionTimeout);
+				}
+			});
 		}
 
 		private void customizeMaxHttpHeaderSize(

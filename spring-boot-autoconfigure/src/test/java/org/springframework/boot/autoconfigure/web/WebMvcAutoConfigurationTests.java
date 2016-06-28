@@ -28,12 +28,14 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.assertj.core.api.Condition;
 import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration.WebMvcAutoConfigurationAdapter;
@@ -41,13 +43,15 @@ import org.springframework.boot.context.embedded.AnnotationConfigEmbeddedWebAppl
 import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomizerBeanPostProcessor;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerFactory;
 import org.springframework.boot.context.embedded.MockEmbeddedServletContainerFactory;
-import org.springframework.boot.context.web.OrderedHttpPutFormContentFilter;
 import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.web.filter.OrderedHttpPutFormContentFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.format.support.FormattingConversionService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
@@ -56,15 +60,20 @@ import org.springframework.web.accept.ContentNegotiationManager;
 import org.springframework.web.bind.support.ConfigurableWebBindingInitializer;
 import org.springframework.web.filter.HttpPutFormContentFilter;
 import org.springframework.web.servlet.HandlerAdapter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.handler.HandlerExceptionResolverComposite;
 import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 import org.springframework.web.servlet.i18n.FixedLocaleResolver;
+import org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.servlet.resource.AppCacheManifestTransformer;
 import org.springframework.web.servlet.resource.CachingResourceResolver;
 import org.springframework.web.servlet.resource.CachingResourceTransformer;
@@ -256,14 +265,42 @@ public class WebMvcAutoConfigurationTests {
 
 	@Test
 	public void overrideLocale() throws Exception {
+		load(AllResources.class, "spring.mvc.locale:en_UK",
+				"spring.mvc.locale-resolver=fixed");
+		// mock request and set user preferred locale
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.addPreferredLocale(StringUtils.parseLocaleString("nl_NL"));
+		request.addHeader(HttpHeaders.ACCEPT_LANGUAGE, "nl_NL");
+		LocaleResolver localeResolver = this.context.getBean(LocaleResolver.class);
+		assertThat(localeResolver).isInstanceOf(FixedLocaleResolver.class);
+		Locale locale = localeResolver.resolveLocale(request);
+		// test locale resolver uses fixed locale and not user preferred locale
+		assertThat(locale.toString()).isEqualTo("en_UK");
+	}
+
+	@Test
+	public void useAcceptHeaderLocale() {
 		load(AllResources.class, "spring.mvc.locale:en_UK");
 		// mock request and set user preferred locale
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.addPreferredLocale(StringUtils.parseLocaleString("nl_NL"));
+		request.addHeader(HttpHeaders.ACCEPT_LANGUAGE, "nl_NL");
 		LocaleResolver localeResolver = this.context.getBean(LocaleResolver.class);
+		assertThat(localeResolver).isInstanceOf(AcceptHeaderLocaleResolver.class);
 		Locale locale = localeResolver.resolveLocale(request);
-		assertThat(localeResolver).isInstanceOf(FixedLocaleResolver.class);
-		// test locale resolver uses fixed locale and not user preferred locale
+		// test locale resolver uses user preferred locale
+		assertThat(locale.toString()).isEqualTo("nl_NL");
+	}
+
+	@Test
+	public void useDefaultLocaleIfAcceptHeaderNoSet() {
+		load(AllResources.class, "spring.mvc.locale:en_UK");
+		// mock request and set user preferred locale
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		LocaleResolver localeResolver = this.context.getBean(LocaleResolver.class);
+		assertThat(localeResolver).isInstanceOf(AcceptHeaderLocaleResolver.class);
+		Locale locale = localeResolver.resolveLocale(request);
+		// test locale resolver uses default locale if no header is set
 		assertThat(locale.toString()).isEqualTo("en_UK");
 	}
 
@@ -398,7 +435,14 @@ public class WebMvcAutoConfigurationTests {
 		assertThat(this.context.getBeansOfType(SimpleUrlHandlerMapping.class)
 				.get("faviconHandlerMapping")).isNotNull();
 		Map<String, List<Resource>> mappingLocations = getFaviconMappingLocations();
-		assertThat(mappingLocations.get("/**/favicon.ico")).hasSize(5);
+		assertThat(mappingLocations.get("/**/favicon.ico")).hasSize(6);
+	}
+
+	@Test
+	public void faviconMappingUsesStaticLocations() throws IllegalAccessException {
+		load("spring.resources.static-locations=classpath:/static");
+		Map<String, List<Resource>> mappingLocations = getFaviconMappingLocations();
+		assertThat(mappingLocations.get("/**/favicon.ico")).hasSize(2);
 	}
 
 	@Test
@@ -459,6 +503,60 @@ public class WebMvcAutoConfigurationTests {
 		assertThat(this.context.getBean(RequestMappingHandlerAdapter.class)
 				.getWebBindingInitializer())
 						.isInstanceOf(CustomWebBindingInitializer.class);
+	}
+
+	@Test
+	public void customRequestMappingHandlerMapping() {
+		load(CustomRequestMappingHandlerMapping.class);
+		assertThat(this.context.getBean(RequestMappingHandlerMapping.class))
+				.isInstanceOf(MyRequestMappingHandlerMapping.class);
+	}
+
+	@Test
+	public void customRequestMappingHandlerAdapter() {
+		load(CustomRequestMappingHandlerAdapter.class);
+		assertThat(this.context.getBean(RequestMappingHandlerAdapter.class))
+				.isInstanceOf(MyRequestMappingHandlerAdapter.class);
+	}
+
+	@Test
+	public void multipleWebMvcRegistrations() {
+		load(MultipleWebMvcRegistrations.class);
+		assertThat(this.context.getBean(RequestMappingHandlerMapping.class))
+				.isNotInstanceOf(MyRequestMappingHandlerMapping.class);
+		assertThat(this.context.getBean(RequestMappingHandlerAdapter.class))
+				.isNotInstanceOf(MyRequestMappingHandlerAdapter.class);
+	}
+
+	@Test
+	public void defaultLogResolvedException() {
+		load();
+		testLogResolvedExceptionCustomization(false);
+	}
+
+	@Test
+	public void customLogResolvedException() {
+		load("spring.mvc.log-resolved-exception:true");
+		testLogResolvedExceptionCustomization(true);
+	}
+
+	private void testLogResolvedExceptionCustomization(final boolean expected) {
+		HandlerExceptionResolver exceptionResolver = this.context.getBean(
+				HandlerExceptionResolver.class);
+		assertThat(exceptionResolver).isInstanceOf(HandlerExceptionResolverComposite.class);
+		List<HandlerExceptionResolver> delegates =
+				((HandlerExceptionResolverComposite) exceptionResolver).getExceptionResolvers();
+		for (HandlerExceptionResolver delegate : delegates) {
+			if (delegate instanceof AbstractHandlerMethodAdapter) {
+				assertThat(new DirectFieldAccessor(delegate).getPropertyValue("warnLogger"))
+						.is(new Condition<Object>() {
+							@Override
+							public boolean matches(Object value) {
+								return (expected ? value != null : value == null);
+							}
+						});
+			}
+		}
 	}
 
 	private void load(Class<?> config, String... environment) {
@@ -584,6 +682,55 @@ public class WebMvcAutoConfigurationTests {
 		public HttpPutFormContentFilter customHttpPutFormContentFilter() {
 			return new HttpPutFormContentFilter();
 		}
+
+	}
+
+	@Configuration
+	static class CustomRequestMappingHandlerMapping {
+
+		@Bean
+		public WebMvcRegistrationsAdapter webMvcRegistrationsHandlerMapping() {
+			return new WebMvcRegistrationsAdapter() {
+
+				@Override
+				public RequestMappingHandlerMapping getRequestMappingHandlerMapping() {
+					return new MyRequestMappingHandlerMapping();
+				}
+
+			};
+		}
+	}
+
+	private static class MyRequestMappingHandlerMapping
+			extends RequestMappingHandlerMapping {
+
+	}
+
+	@Configuration
+	static class CustomRequestMappingHandlerAdapter {
+
+		@Bean
+		public WebMvcRegistrationsAdapter webMvcRegistrationsHandlerAdapter() {
+			return new WebMvcRegistrationsAdapter() {
+
+				@Override
+				public RequestMappingHandlerAdapter getRequestMappingHandlerAdapter() {
+					return new MyRequestMappingHandlerAdapter();
+				}
+
+			};
+		}
+	}
+
+	private static class MyRequestMappingHandlerAdapter
+			extends RequestMappingHandlerAdapter {
+
+	}
+
+	@Configuration
+	@Import({ CustomRequestMappingHandlerMapping.class,
+			CustomRequestMappingHandlerAdapter.class })
+	static class MultipleWebMvcRegistrations {
 
 	}
 

@@ -43,9 +43,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.web.ResourceProperties.Strategy;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.context.web.OrderedHiddenHttpMethodFilter;
-import org.springframework.boot.context.web.OrderedHttpPutFormContentFilter;
-import org.springframework.boot.context.web.OrderedRequestContextFilter;
+import org.springframework.boot.web.filter.OrderedHiddenHttpMethodFilter;
+import org.springframework.boot.web.filter.OrderedHttpPutFormContentFilter;
+import org.springframework.boot.web.filter.OrderedRequestContextFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -68,6 +68,7 @@ import org.springframework.web.filter.HiddenHttpMethodFilter;
 import org.springframework.web.filter.HttpPutFormContentFilter;
 import org.springframework.web.filter.RequestContextFilter;
 import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.ViewResolver;
@@ -81,8 +82,11 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.handler.AbstractHandlerExceptionResolver;
 import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 import org.springframework.web.servlet.i18n.FixedLocaleResolver;
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.servlet.resource.AppCacheManifestTransformer;
@@ -102,6 +106,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
  * @author Andy Wilkinson
  * @author Sébastien Deleuze
  * @author Eddú Meléndez
+ * @author Stephane Nicoll
  */
 @Configuration
 @ConditionalOnWebApplication
@@ -199,6 +204,7 @@ public class WebMvcAutoConfiguration {
 
 		@Bean
 		@ConditionalOnBean(View.class)
+		@ConditionalOnMissingBean
 		public BeanNameViewResolver beanNameViewResolver() {
 			BeanNameViewResolver resolver = new BeanNameViewResolver();
 			resolver.setOrder(Ordered.LOWEST_PRECEDENCE - 10);
@@ -222,7 +228,13 @@ public class WebMvcAutoConfiguration {
 		@ConditionalOnMissingBean
 		@ConditionalOnProperty(prefix = "spring.mvc", name = "locale")
 		public LocaleResolver localeResolver() {
-			return new FixedLocaleResolver(this.mvcProperties.getLocale());
+			if (this.mvcProperties
+					.getLocaleResolver() == WebMvcProperties.LocaleResolver.FIXED) {
+				return new FixedLocaleResolver(this.mvcProperties.getLocale());
+			}
+			AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
+			localeResolver.setDefaultLocale(this.mvcProperties.getLocale());
+			return localeResolver;
 		}
 
 		@Bean
@@ -341,10 +353,14 @@ public class WebMvcAutoConfiguration {
 
 		private final ListableBeanFactory beanFactory;
 
+		private final WebMvcRegistrations mvcRegistrations;
+
 		public EnableWebMvcConfiguration(
 				ObjectProvider<WebMvcProperties> mvcPropertiesProvider,
+				ObjectProvider<WebMvcRegistrations> mvcRegistrationsProvider,
 				ListableBeanFactory beanFactory) {
 			this.mvcProperties = mvcPropertiesProvider.getIfAvailable();
+			this.mvcRegistrations = mvcRegistrationsProvider.getIfUnique();
 			this.beanFactory = beanFactory;
 		}
 
@@ -357,6 +373,15 @@ public class WebMvcAutoConfiguration {
 			return adapter;
 		}
 
+		@Override
+		protected RequestMappingHandlerAdapter createRequestMappingHandlerAdapter() {
+			if (this.mvcRegistrations != null
+					&& this.mvcRegistrations.getRequestMappingHandlerAdapter() != null) {
+				return this.mvcRegistrations.getRequestMappingHandlerAdapter();
+			}
+			return super.createRequestMappingHandlerAdapter();
+		}
+
 		@Bean
 		@Primary
 		@Override
@@ -366,12 +391,48 @@ public class WebMvcAutoConfiguration {
 		}
 
 		@Override
+		protected RequestMappingHandlerMapping createRequestMappingHandlerMapping() {
+			if (this.mvcRegistrations != null
+					&& this.mvcRegistrations.getRequestMappingHandlerMapping() != null) {
+				return this.mvcRegistrations.getRequestMappingHandlerMapping();
+			}
+			return super.createRequestMappingHandlerMapping();
+		}
+
+		@Override
 		protected ConfigurableWebBindingInitializer getConfigurableWebBindingInitializer() {
 			try {
 				return this.beanFactory.getBean(ConfigurableWebBindingInitializer.class);
 			}
 			catch (NoSuchBeanDefinitionException ex) {
 				return super.getConfigurableWebBindingInitializer();
+			}
+		}
+
+		@Override
+		protected ExceptionHandlerExceptionResolver createExceptionHandlerExceptionResolver() {
+			if (this.mvcRegistrations != null && this.mvcRegistrations
+					.getExceptionHandlerExceptionResolver() != null) {
+				return this.mvcRegistrations.getExceptionHandlerExceptionResolver();
+			}
+			return super.createExceptionHandlerExceptionResolver();
+		}
+
+		@Override
+		protected void configureHandlerExceptionResolvers(
+				List<HandlerExceptionResolver> exceptionResolvers) {
+			super.configureHandlerExceptionResolvers(exceptionResolvers);
+			if (exceptionResolvers.isEmpty()) {
+				addDefaultHandlerExceptionResolvers(exceptionResolvers);
+			}
+			if (this.mvcProperties.isLogResolvedException()) {
+				for (HandlerExceptionResolver resolver : exceptionResolvers) {
+					if (resolver instanceof AbstractHandlerExceptionResolver) {
+						((AbstractHandlerExceptionResolver) resolver)
+								.setWarnLogCategory(resolver.getClass()
+										.getName());
+					}
+				}
 			}
 		}
 

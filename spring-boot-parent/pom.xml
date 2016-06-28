@@ -55,7 +55,7 @@
 			<dependency>
 				<groupId>io.spring.gradle</groupId>
 				<artifactId>dependency-management-plugin</artifactId>
-				<version>0.5.6.RELEASE</version>
+				<version>0.5.7.RELEASE</version>
 			</dependency>
 			<dependency>
 				<groupId>jline</groupId>
@@ -585,7 +585,7 @@
 					<signature>
 						<groupId>org.codehaus.mojo.signature</groupId>
 						<artifactId>java16</artifactId>
-						<version>1.0</version>
+						<version>1.1</version>
 					</signature>
 					<annotations>
 						<annotation>org.springframework.lang.UsesJava8</annotation>

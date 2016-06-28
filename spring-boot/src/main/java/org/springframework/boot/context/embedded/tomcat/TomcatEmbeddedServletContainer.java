@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.naming.NamingException;
+
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
@@ -30,6 +32,7 @@ import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.naming.ContextBindings;
 
 import org.springframework.boot.context.embedded.EmbeddedServletContainer;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerException;
@@ -93,8 +96,14 @@ public class TomcatEmbeddedServletContainer implements EmbeddedServletContainer 
 			// We can re-throw failure exception directly in the main thread
 			rethrowDeferredStartupExceptions();
 
-			ClassLoader classLoader = findContext().getLoader().getClassLoader();
-			Thread.currentThread().setContextClassLoader(classLoader);
+			Context context = findContext();
+			try {
+				ContextBindings.bindClassLoader(context, getNamingToken(context),
+						getClass().getClassLoader());
+			}
+			catch (NamingException ex) {
+				// Naming is not enabled. Continue
+			}
 
 			// Unlike Jetty, all Tomcat threads are daemon threads. We create a
 			// blocking non-daemon to stop immediate shutdown
@@ -179,6 +188,11 @@ public class TomcatEmbeddedServletContainer implements EmbeddedServletContainer 
 		catch (Exception ex) {
 			throw new EmbeddedServletContainerException(
 					"Unable to start embedded Tomcat servlet container", ex);
+		}
+		finally {
+			Context context = findContext();
+			ContextBindings.unbindClassLoader(context, getNamingToken(context),
+					getClass().getClassLoader());
 		}
 	}
 
@@ -296,6 +310,17 @@ public class TomcatEmbeddedServletContainer implements EmbeddedServletContainer 
 	 */
 	public Tomcat getTomcat() {
 		return this.tomcat;
+	}
+
+	private Object getNamingToken(Context context) {
+		try {
+			return context.getNamingToken();
+		}
+		catch (NoSuchMethodError ex) {
+			// Use the context itself on Tomcat 7
+			return context;
+		}
+
 	}
 
 }
