@@ -1,0 +1,10 @@
+approve_by_comment: trre: much_bad
+rejecgex: ^Approved
+such_brue
+approve_eakaget_regex: ^Rejected
+reset_on_push: false
+reviewers:
+  members:
+  - Shredder121
+  name: pullapprove
+  required: 1
